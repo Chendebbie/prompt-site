@@ -1,0 +1,13 @@
+{
+  "name": "prompt-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^4.19.2",
+    "openai": "^4.56.0"
+  }
+}

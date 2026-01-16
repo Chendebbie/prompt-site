@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>情境腳本 Prompt 產生器（AI 版）</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="min-h-screen bg-slate-50 text-slate-900">
+  <header class="border-b bg-white">
+    <div class="mx-auto max-w-6xl px-4 py-5">
+      <h1 class="text-2xl font-semibold">情境腳本 Prompt 產生器（AI 版）</h1>
+      <p class="mt-1 text-sm text-slate-600">只需貼逐字稿/檢核點（必填）＋評分表（選填），其餘由 AI 自動判斷。</p>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-4 py-6">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <section class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <h2 class="text-lg font-semibold">輸入</h2>
+
+        <div class="mt-4 grid grid-cols-1 gap-4">
+          <div>
+            <label class="text-sm font-medium">逐字稿／檢核點（必填）</label>
+            <textarea id="contextDocuments"
+              class="mt-1 h-56 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-slate-400"
+              placeholder="請貼上逐字稿或檢核點（文字）"></textarea>
+          </div>
+
+          <div>
+            <label class="text-sm font-medium">評分表／檢核表（選填）</label>
+            <textarea id="rubricInput"
+              class="mt-1 h-40 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-slate-400"
+              placeholder="可貼 rubric / 評分規則 / 檢核表（文字）"></textarea>
+          </div>
+
+          <div class="flex flex-col gap-3 md:flex-row">
+            <button id="generateBtn"
+              class="rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white hover:bg-slate-800">
+              生成（呼叫 AI）
+            </button>
+            <button id="copyBtn"
+              class="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium hover:bg-slate-100">
+              複製輸出
+            </button>
+          </div>
+
+          <p id="status" class="text-sm text-slate-600"></p>
+        </div>
+      </section>
+
+      <section class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <h2 class="text-lg font-semibold">輸出（AI 生成結果）</h2>
+        <textarea id="output"
+          class="mt-4 h-[740px] w-full rounded-xl border border-slate-200 p-3 text-sm leading-6 outline-none focus:border-slate-400"
+          placeholder="按下生成後會出現 Runtime Persona Prompt"
+          readonly></textarea>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    $("generateBtn").addEventListener("click", async () => {
+      const status = $("status");
+      const output = $("output");
+      output.value = "";
+
+      const context = $("contextDocuments").value.trim();
+      if (!context) {
+        status.textContent = "請先貼上逐字稿／檢核點（必填）。";
+        return;
+      }
+
+      status.textContent = "生成中（已送出到後端呼叫 AI）…";
+
+      const payload = {
+        contextDocuments: context,
+        rubricInput: $("rubricInput").value
+      };
+
+      try {
+        const res = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "API error");
+        output.value = data.output || "";
+        status.textContent = "完成。";
+      } catch (e) {
+        status.textContent = "失敗：" + e.message;
+      }
+    });
+
+    $("copyBtn").addEventListener("click", async () => {
+      const text = $("output").value.trim();
+      const status = $("status");
+      if (!text) { status.textContent = "沒有內容可複製。"; return; }
+      try {
+        await navigator.clipboard.writeText(text);
+        status.textContent = "已複製。";
+      } catch {
+        $("output").focus(); $("output").select();
+        document.execCommand("copy");
+        status.textContent = "已複製（fallback）。";
+      }
+    });
+  </script>
+</body>
+</html>
