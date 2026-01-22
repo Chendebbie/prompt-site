@@ -15,3 +15,7 @@ yarn-error.log*
 # build
 dist/
 build/
+
+.env
+node_modules/
+.DS_Store
