@@ -3,11 +3,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "start": "node server.js"
   },
   "dependencies": {
     "dotenv": "^17.2.3",
     "express": "^4.19.2",
-    "openai": "^4.56.0"
+    "mammoth": "^1.11.0",
+    "multer": "^2.0.2",
+    "node-pptx-parser": "^1.0.1",
+    "openai": "^4.56.0",
+    "pdf-parse": "^2.4.5",
+    "xlsx": "^0.18.5"
   }
 }

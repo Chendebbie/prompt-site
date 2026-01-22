@@ -2,113 +2,195 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>情境腳本 Prompt 產生器（AI 版）</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                   "Noto Sans TC", Arial, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+    }
+    h1 { font-size: 24px; }
+    h2 { margin-top: 32px; }
+
+    textarea {
+      width: 100%;
+      min-height: 140px;
+      margin-top: 6px;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    .row { margin: 18px 0; }
+    .hint {
+      color: #555;
+      font-size: 14px;
+      margin-top: 6px;
+    }
+
+    button {
+      padding: 10px 18px;
+      font-size: 16px;
+    }
+    button[disabled] {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .loading {
+      display: none;
+      margin-left: 10px;
+    }
+    .loading.show {
+      display: inline;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      background: #f6f7f8;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      margin-top: 12px;
+    }
+  </style>
 </head>
 
-<body class="min-h-screen bg-slate-50 text-slate-900">
-  <header class="border-b bg-white">
-    <div class="mx-auto max-w-6xl px-4 py-5">
-      <h1 class="text-2xl font-semibold">情境腳本 Prompt 產生器（AI 版）</h1>
-      <p class="mt-1 text-sm text-slate-600">只需貼逐字稿/檢核點（必填）＋評分表（選填），其餘由 AI 自動判斷。</p>
-    </div>
-  </header>
+<body>
 
-  <main class="mx-auto max-w-6xl px-4 py-6">
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      <section class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-        <h2 class="text-lg font-semibold">輸入</h2>
+<h1>情境腳本 Prompt 產生器（AI 版）</h1>
 
-        <div class="mt-4 grid grid-cols-1 gap-4">
-          <div>
-            <label class="text-sm font-medium">逐字稿／檢核點（必填）</label>
-            <textarea id="contextDocuments"
-              class="mt-1 h-56 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-slate-400"
-              placeholder="請貼上逐字稿或檢核點（文字）"></textarea>
-          </div>
+<p>
+只需提供「逐字稿 / 檢核點（必填）」與「評分表（選填）」，
+其餘由 AI 自動判斷並產生完整可上線的 Runtime Persona Prompt。
+</p>
 
-          <div>
-            <label class="text-sm font-medium">評分表／檢核表（選填）</label>
-            <textarea id="rubricInput"
-              class="mt-1 h-40 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-slate-400"
-              placeholder="可貼 rubric / 評分規則 / 檢核表（文字）"></textarea>
-          </div>
+<!-- ===================== -->
+<!-- 逐字稿 / 檢核點 -->
+<!-- ===================== -->
+<h2>逐字稿 / 檢核點（必填）</h2>
 
-          <div class="flex flex-col gap-3 md:flex-row">
-            <button id="generateBtn"
-              class="rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white hover:bg-slate-800">
-              生成（呼叫 AI）
-            </button>
-            <button id="copyBtn"
-              class="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium hover:bg-slate-100">
-              複製輸出
-            </button>
-          </div>
+<div class="row">
+  <label>文字輸入：</label>
+  <textarea id="contextText"
+    placeholder="請貼上逐字稿、常見對話句型、QA 檢核點等…"></textarea>
+</div>
 
-          <p id="status" class="text-sm text-slate-600"></p>
-        </div>
-      </section>
+<div class="row">
+  <label>上傳逐字稿 / 檢核點檔案（選填）：</label><br />
+  <input id="contextFiles" type="file" multiple
+    accept=".txt,.csv,.xlsx,.xls,.pdf,.docx,.pptx,.md,.json,.png,.jpg,.jpeg,.webp" />
+  <div id="contextFileList" class="hint"></div>
+</div>
 
-      <section class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-        <h2 class="text-lg font-semibold">輸出（AI 生成結果）</h2>
-        <textarea id="output"
-          class="mt-4 h-[740px] w-full rounded-xl border border-slate-200 p-3 text-sm leading-6 outline-none focus:border-slate-400"
-          placeholder="按下生成後會出現 Runtime Persona Prompt"
-          readonly></textarea>
-      </section>
-    </div>
-  </main>
+<!-- ===================== -->
+<!-- 評分表 / 檢核表 -->
+<!-- ===================== -->
+<h2>評分表 / 檢核表（選填）</h2>
 
-  <script>
-    const $ = (id) => document.getElementById(id);
+<div class="row">
+  <label>文字輸入：</label>
+  <textarea id="rubricText"
+    placeholder="可選：貼上評分規則、檢核表、Rubric…"></textarea>
+</div>
 
-    $("generateBtn").addEventListener("click", async () => {
-      const status = $("status");
-      const output = $("output");
-      output.value = "";
+<div class="row">
+  <label>上傳評分表 / 檢核表檔案（選填）：</label><br />
+  <input id="rubricFiles" type="file" multiple
+    accept=".txt,.csv,.xlsx,.xls,.pdf,.docx,.pptx,.md,.json" />
+  <div id="rubricFileList" class="hint"></div>
+</div>
 
-      const context = $("contextDocuments").value.trim();
-      if (!context) {
-        status.textContent = "請先貼上逐字稿／檢核點（必填）。";
-        return;
+<!-- ===================== -->
+<!-- 操作 -->
+<!-- ===================== -->
+<div class="row">
+  <button id="btn">生成（呼叫 AI）</button>
+  <span id="loading" class="loading">⏳ AI 產生中…</span>
+</div>
+
+<!-- ===================== -->
+<!-- 輸出 -->
+<!-- ===================== -->
+<h2>輸出（AI 生成結果）</h2>
+<pre id="out">(尚未生成)</pre>
+
+<script>
+  const btn = document.getElementById("btn");
+  const loading = document.getElementById("loading");
+  const out = document.getElementById("out");
+
+  const contextFilesEl = document.getElementById("contextFiles");
+  const rubricFilesEl = document.getElementById("rubricFiles");
+
+  const contextFileList = document.getElementById("contextFileList");
+  const rubricFileList = document.getElementById("rubricFileList");
+
+  function renderFileList(inputEl, outputEl) {
+    const names = [...inputEl.files].map(
+      f => `${f.name} (${Math.round(f.size / 1024)} KB)`
+    );
+    outputEl.textContent = names.length ? `已選：${names.join("、")}` : "";
+  }
+
+  contextFilesEl.addEventListener("change", () => {
+    renderFileList(contextFilesEl, contextFileList);
+  });
+
+  rubricFilesEl.addEventListener("change", () => {
+    renderFileList(rubricFilesEl, rubricFileList);
+  });
+
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    loading.classList.add("show");
+    out.textContent = "AI 處理中…";
+
+    try {
+      const contextText = document.getElementById("contextText").value.trim();
+      const rubricText = document.getElementById("rubricText").value.trim();
+
+      // 🔒 防呆：逐字稿一定要有「文字或檔案」
+      if (!contextText && contextFilesEl.files.length === 0) {
+        throw new Error("請至少提供逐字稿文字，或上傳逐字稿相關檔案。");
       }
 
-      status.textContent = "生成中（已送出到後端呼叫 AI）…";
+      const fd = new FormData();
+      fd.append("text", contextText);
+      fd.append("rubricInput", rubricText);
 
-      const payload = {
-        contextDocuments: context,
-        rubricInput: $("rubricInput").value
-      };
-
-      try {
-        const res = await fetch("/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (!data.ok) throw new Error(data.error || "API error");
-        output.value = data.output || "";
-        status.textContent = "完成。";
-      } catch (e) {
-        status.textContent = "失敗：" + e.message;
+      for (const f of contextFilesEl.files) {
+        fd.append("contextFiles", f);
       }
-    });
 
-    $("copyBtn").addEventListener("click", async () => {
-      const text = $("output").value.trim();
-      const status = $("status");
-      if (!text) { status.textContent = "沒有內容可複製。"; return; }
-      try {
-        await navigator.clipboard.writeText(text);
-        status.textContent = "已複製。";
-      } catch {
-        $("output").focus(); $("output").select();
-        document.execCommand("copy");
-        status.textContent = "已複製（fallback）。";
+      for (const f of rubricFilesEl.files) {
+        fd.append("rubricFiles", f);
       }
-    });
-  </script>
+
+      const r = await fetch("/api/generate", {
+        method: "POST",
+        body: fd
+      });
+
+      let data = null;
+      try { data = await r.json(); } catch (_) {}
+
+      if (!r.ok || !data?.ok) {
+        throw new Error(data?.error || `API 呼叫失敗（HTTP ${r.status}）`);
+      }
+
+      out.textContent = data.output || "(無輸出)";
+    } catch (e) {
+      out.textContent = "❌ 發生錯誤：\n" + (e.message || String(e));
+    } finally {
+      loading.classList.remove("show");
+      btn.disabled = false;
+    }
+  });
+</script>
+
 </body>
 </html>
